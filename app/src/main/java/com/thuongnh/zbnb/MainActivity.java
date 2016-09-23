@@ -16,19 +16,23 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.TouchDelegate;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 
 public class MainActivity extends AppCompatActivity {
 
     FrameLayout fmMenu;
     FrameLayout fmContent;
+    View interceptView;
+    Button btnMenu;
 
     boolean isOpen = false;
     boolean willMove = true;
 
     double firstTouchX = 0;
 
-    int currentColor = Color.TRANSPARENT;
     double currentX = 0;
     double currentScale = 1;
     double currentRotation = 0;
@@ -40,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
 
         fmMenu = (FrameLayout) findViewById(R.id.fm_menu);
         fmContent = (FrameLayout) findViewById(R.id.fm_content);
+        btnMenu = (Button) findViewById(R.id.btn_menu);
 
         getSupportFragmentManager()
                 .beginTransaction()
@@ -47,15 +52,18 @@ public class MainActivity extends AppCompatActivity {
                 .replace(R.id.fm_content, ContentFragment.newInstance())
                 .commit();
 
-        fmContent.setOnClickListener(new View.OnClickListener() {
+        btnMenu.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                if (!isOpen) {
+                    performAnimation(1);
+                }
             }
         });
 
+        interceptView = new View(MainActivity.this);
+        interceptView.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         addTouchGesture();
-
     }
 
     @Override
@@ -70,21 +78,17 @@ public class MainActivity extends AppCompatActivity {
         currentX = (width * 0.6 - 100) * percent;
         currentScale = (1 - 0.4 * percent);
         currentRotation = 10 * percent;
-        currentColor = (int)((Color.BLACK - Color.TRANSPARENT)* percent * 100) + Color.TRANSPARENT;
-        fmContent.setX((float)currentX);
-        fmContent.setScaleX((float)currentScale);
-        fmContent.setScaleY((float)currentScale);
-        fmContent.setRotationY((float)currentRotation);
-        PorterDuffColorFilter greyFilter = new PorterDuffColorFilter(currentColor, PorterDuff.Mode.DST_ATOP);
-        fmContent.getBackground().setColorFilter(greyFilter);
-        Log.e("Color", "" + Color.BLACK);
+        fmContent.setX((float) currentX);
+        fmContent.setScaleX((float) currentScale);
+        fmContent.setScaleY((float) currentScale);
+        fmContent.setRotationY((float) currentRotation);
     }
 
     private void performAnimation(double percent) {
         performAnimation(300, percent, 0);
     }
 
-    private void performAnimation(long duration, double percent, long delay) {
+    private void performAnimation(long duration, final double percent, long delay) {
         Point point = new Point();
         getWindow().getWindowManager().getDefaultDisplay().getSize(point);
         float width = point.x;
@@ -109,6 +113,14 @@ public class MainActivity extends AppCompatActivity {
                 currentX = x;
                 currentScale = scale;
                 currentRotation = rotation;
+
+                if (percent == 1) {
+                    fmContent.addView(interceptView);
+                    isOpen = true;
+                } else {
+                    fmContent.removeView(interceptView);
+                    isOpen = false;
+                }
             }
 
             @Override
@@ -133,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
         getWindow().getWindowManager().getDefaultDisplay().getSize(point);
         final double limitWidth = point.x * 0.6 - 100;
 
-        fmContent.setOnTouchListener(new View.OnTouchListener() {
+        interceptView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
@@ -146,10 +158,8 @@ public class MainActivity extends AppCompatActivity {
                             return true;
                         }
                         if (isOpen) {
-                            isOpen = false;
                             performAnimation(0);
                         } else {
-                            isOpen = true;
                             performAnimation(1);
                         }
                         break;
@@ -158,7 +168,7 @@ public class MainActivity extends AppCompatActivity {
 
                         double percent = 1 - (limitWidth - (currentX - firstTouchX)) / limitWidth;
                         if (isOpen) {
-                            percent = (limitWidth - ( - currentX + firstTouchX)) / limitWidth;
+                            percent = (limitWidth - (-currentX + firstTouchX)) / limitWidth;
                         }
 
                         if (!isOpen && currentX < firstTouchX) {
